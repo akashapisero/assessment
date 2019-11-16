@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd">
+	<db:config name="Database_Config" doc:name="Database Config" doc:id="259c909b-556d-4ba5-b4b9-162c2510a218" >
+		<db:my-sql-connection host=" db4free.net" port="3306" user="user212" password="qwerty11" database="lazyfashinons" />
+	</db:config>
+	<flow name="retrieveSub_Flow" doc:id="8918f918-3698-41b4-b972-626047bde7fb" >
+		<logger level="INFO" doc:name="Logger" doc:id="a0c2aa1d-2fcb-4edd-8949-80ebc8da63d1" message='#["Retrieve flow"]'/>
+		<set-variable doc:name="accountNumber" doc:id="ddafc4b8-4cd8-45d6-be66-e28a03788a1e" variableName="accountNumber" value="#[attributes.uriParams.AccountNumber]"/>
+		<logger level="INFO" doc:name="Logger" doc:id="12bf4ddc-c049-4660-8357-b49d6354bcdd" message="#[vars.accountNumber]"/>
+		<salesforce:query doc:name="Query" doc:id="13820c8d-d17b-43a1-8ebd-9c8ec6d81e44" config-ref="Salesforce_Config">
+			<salesforce:salesforce-query >SELECT Account Name,Billing City,Country,Billing Country,BillingPostalCode,Billing Street,Account Number from Account where AccountNumber = ':AccountNumber'
+</salesforce:salesforce-query>
+			<salesforce:parameters ><![CDATA[#[output application/java
+---
+{
+	"AccountNumber" : vars.accountNumber
+}]]]></salesforce:parameters>
+		</salesforce:query>
+		<set-payload value="#[payload]" doc:name="Set Payload" doc:id="40c368fc-ae97-435b-9387-ba21aff764b2" />
+		<logger level="INFO" doc:name="Logger" doc:id="6adbe926-ea5d-462a-8f33-c9c68bfc131b" message="#[payload]"/>
+	</flow>
+	<flow name="updateCustomerSub_Flow" doc:id="4dfce0e5-3b9d-4682-8b1e-47932c2579b9" >
+		<logger level="INFO" doc:name="Logger" doc:id="3fcf4704-9344-40b9-96cb-08b5be0be71a" message="Update"/>
+		<ee:transform doc:name="Transform Message" doc:id="d3917bc5-60f8-422a-ad77-4ab2f5c82a52" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+[{
+  "Name" : if(payload.Name == null) "" else payload.Name,
+  "BillingStreet": if(payload.BillingStreet == null) "" else payload.BillingStreet,
+  "BillingCity": if(payload.BillingCity == null) "" else payload.BillingCity,
+  "BillingState": if(payload.BillingState == null) "" else payload.BillingState ,
+  "BillingPostalCode": if(payload.BillingPostalCode == null) "" else payload.BillingPostalCode,
+  "BillingCountry": if(payload.BillingCountry == null) "" else payload.BillingCountry,
+  "AccountNumber": if(payload.AccountNumber == null) "" else payload.AccountNumber
+}]]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<salesforce:update type="Account" doc:name="Update" doc:id="6c0e79dc-b072-4dca-97d7-8eb3e768d927" config-ref="Salesforce_Config"/>
+		<logger level="INFO" doc:name="Logger" doc:id="620abb53-9527-437f-8861-dcbf0fd62e54" message='#["User Information Updated"]'/>
+	</flow>
+	<flow name="createCustomerSub_Flow" doc:id="b13fb240-875d-4652-8887-dca61d8d5e0d" >
+		<logger level="INFO" doc:name="Logger" doc:id="779c21c0-7a99-4bdd-974b-26dfaa1c6d5a" message='#["create"]'/>
+		<ee:transform doc:name="Transform Message" doc:id="cded0c68-1026-4fd1-9e0f-d10903d0a1eb" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+[
+ {
+  "Name" : payload.Name,
+  "BillingStreet": payload.BillingStreet,
+  "BillingCity": payload.BillingCity,
+  "BillingState": payload.BillingState,
+  "BillingPostalCode": payload.BillingPostalCode,
+  "BillingCountry": payload.BillingCountry,
+ "AccountNumber": payload.AccountNumber
+ }
+]]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<salesforce:create type="Account" doc:name="Create" doc:id="23ca3185-7b60-4c95-ad32-77d218091d6a" config-ref="Salesforce_Config"/>
+		<set-payload value="#[payload]" doc:name="Set Payload" doc:id="d6bcf415-391f-4d88-9d12-e68434fd846f" />
+	</flow>
+	<flow name="ImplementationFlow" doc:id="70d06d51-b9ab-478a-9b8f-9b1c32ff1c1c">
+		<scheduler doc:name="Scheduler" doc:id="2aa9f5ba-37c0-4148-ac62-c9c4ef4dd66c">
+			<scheduling-strategy>
+				<cron expression="0 0 0 * * ?" />
+			</scheduling-strategy>
+		</scheduler>
+		<logger level="INFO" doc:name="Logger" doc:id="6947aefd-7b98-4b81-b6ac-193e2d0eb01b" message='#["Scheduler Initialized"]' />
+		<salesforce:query doc:name="Query" doc:id="a811fe7d-bbf7-47ce-8b78-7232aa2396ab" config-ref="Salesforce_Config">
+			<salesforce:salesforce-query>SELECT * from Account 
+</salesforce:salesforce-query>
+		</salesforce:query>
+		<db:insert doc:name="Insert" doc:id="1045ffc6-17f0-4051-920c-27eab789465c" config-ref="Database_Config">
+			<db:sql >Insert into Account values(:Name,:BillingStreet,:BillingCity,:BillingState,:BillingPostalCode,:BillingCountry,:AccountNumber)</db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	Name: payload.Name,
+	Billing Street: payload.BillingStreet,
+	Billing City: payload.BillingCity,
+	Billing State:payload.BillingState,
+	Billing PostalCode: payload.BillingPostalCode,
+	BillingCountry: payload.BillingCountry,
+	AccountNumber: payload.AccountNumber
+	
+	
+}]]]></db:input-parameters>
+		</db:insert>
+		<logger level="INFO" doc:name="Logger" doc:id="ea94ef25-2c1b-4d07-8955-ab5907a82f9d" message="#['Salesforce data extracted']" />
+	</flow>
+</mule>

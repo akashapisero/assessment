@@ -1,0 +1,46 @@
+#%RAML 1.0
+baseUri: https://anypoint.mulesoft.com/mocking/api/v1/links/21e65ebf-d571-41f0-ab2f-6d2b705a4584/ # 
+title: assessment
+types: 
+  customerinfo: !include dataTypes/customer.raml
+
+/create:
+  post:
+    description: Accept user information and store in salesforce
+    body: 
+      application/json:
+       example: !include examples/customerinfo.raml
+    responses: 
+        201:
+          body: 
+            application/json:
+              example: !include examples/info_accept_response.raml
+
+/retrieve:
+  /{AccountNumber}:
+    uriParameters:
+      AccountNumber:
+        type: string
+  get:
+    description: Retrieves customer info from salesforce
+    responses: 
+            200:
+              body: 
+                application/json:
+                  example: !include examples/customerinfo.raml
+
+/update:
+  put: 
+   description: updates the customer information
+   body:
+      application/json:
+        properties:
+   responses:
+     200:
+       body:
+         application/json:
+           example: !include examples/update_info.raml
+         
+        
+    
+
